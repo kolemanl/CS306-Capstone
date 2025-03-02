@@ -1,10 +1,10 @@
 import socket
 import threading
 
-# Use 0.0.0.0 to listen on all interfaces (needed for VPN)
+# Use 0.0.0.0 to listen on all interfaces
 SERVER_IP = "0.0.0.0"
-TCP_PORT = 5001
-UDP_PORT = 5002
+TCP_PORT = 2001
+UDP_PORT = 2002
 
 server_running = True
 clients = {}  # {username: socket}
@@ -14,17 +14,17 @@ active = set()
 def broadcast_message(message, sender=None):
     """Send a message to all connected clients except the sender."""
     for user, client_sock in list(clients.items()):
-        if sender and user == sender:
+        if sender and user == sender: # Skip the sender
             continue
         try:
-            client_sock.sendall(message.encode())
+            client_sock.sendall(message.encode()) # Send the message
         except:
             # If sending fails, remove client
             client_sock.close()
             del clients[user]
 
 def handle_client(client_sock, username):
-    """Handle client communication."""
+    """Handle client communication. This runs when succesful connection has been established"""
     try:
         broadcast_message(f"{username} has joined the chat!", sender=username)
         
@@ -42,6 +42,7 @@ def handle_client(client_sock, username):
     except:
         pass
     finally:
+        #Cleanup in case
         if username in active:
             active.remove(username)
         if username in inactive:
@@ -54,10 +55,12 @@ def handle_client(client_sock, username):
 def start_server():
     """Start the chat server with both TCP and UDP."""
     global server_running
-    tcp_server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # TCP Server setup
+    tcp_server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
     tcp_server_sock.bind((SERVER_IP, TCP_PORT))
     tcp_server_sock.listen(5)
 
+    # UDP Server setup
     udp_server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_server_sock.bind((SERVER_IP, UDP_PORT))
 
@@ -67,7 +70,7 @@ def start_server():
         """Accept and handle TCP clients while the server is running."""
         while server_running:
             try:
-                client_sock, addr = tcp_server_sock.accept()
+                client_sock, addr = tcp_server_sock.accept() # New attempt connected
             except OSError:
                 break  # Stop accepting new connections when shutting down
             print(f"New TCP connection from {addr}")
@@ -75,11 +78,12 @@ def start_server():
             # Receive username
             username = client_sock.recv(1024).decode().strip()
             if username in clients:
-                client_sock.sendall("ERROR: Username already taken.".encode())
+                client_sock.sendall("ERROR: Username already taken.".encode()) # Send ERROR if taken
                 client_sock.close()
                 continue
-
-            clients[username] = client_sock
+            
+            # Add to actives and clients
+            clients[username] = client_sock 
             active.add(username)
 
             # Send online users list
@@ -90,12 +94,18 @@ def start_server():
             threading.Thread(target=handle_client, args=(client_sock, username), daemon=True).start()
 
     def accept_clients_udp():
-        """Accept and handle UDP clients (for status updates)."""
+        """Accept and handle UDP clients (for status updates). \n
+                3 types of responses expected:
+                    INACTIVE: Username is now idle
+                    ACTIVE: Username is now active
+                    OFFLINE: Username is disconnected
+        """
         while server_running:
             try:
                 message, addr = udp_server_sock.recvfrom(1024)
                 message = message.decode().strip()
 
+                # If Active or inactive switch and register with right set as well as tcp messages for other clients
                 if message.startswith("INACTIVE:"):
                     username = message.split(":")[1].strip()
                     if username in active:
