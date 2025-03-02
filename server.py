@@ -104,7 +104,7 @@ def start_server():
             try:
                 message, addr = udp_server_sock.recvfrom(1024)
                 message = message.decode().strip()
-
+                print(f"UDP MESSAGE: {message}")
                 # If Active or inactive switch and register with right set as well as tcp messages for other clients
                 if message.startswith("INACTIVE:"):
                     username = message.split(":")[1].strip()
