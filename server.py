@@ -33,11 +33,24 @@ def handle_client(client_sock, username):
             if not message:
                 break
             
-            if username in inactive:
-                inactive.remove(username)
-                active.add(username)
-                broadcast_message(f"{username} is now active.")
-            broadcast_message(message, sender=username)
+            if message.startswith("ACTIVE_USERS_REQUEST:"):
+                user_requesting = message.split(":")[1].strip()
+                user_status_list = []
+                for user in clients.keys():
+                    if user in active:
+                        status = "active"
+                    else:
+                        status = "inactive"
+                    user_status_list.append(f"{user} ({status})")
+                response = "Active users: " + ", ".join(user_status_list)
+                clients[user_requesting].sendall(response.encode())
+
+            else:
+                if username in inactive:
+                    inactive.remove(username)
+                    active.add(username)
+                    broadcast_message(f"{username} is now active.")
+                broadcast_message(message, sender=username)
     
     except:
         pass

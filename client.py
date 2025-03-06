@@ -4,7 +4,7 @@ import sys
 import time
 
 IDLE_TIMEOUT = 120
-SERVER_IP = "10.30.6.14"
+SERVER_IP = "10.30.6.23"
 TCP_PORT = 2001
 UDP_PORT = 2002
 SLEEP_TIME = 15
@@ -89,7 +89,10 @@ def start_client():
             
             if msg.lower() == "exit":
                 break
-            tcp_sock.sendall(f"{username}: {msg}".encode())
+            elif msg.lower() == "active-users":
+                tcp_sock.sendall(f"ACTIVE_USERS_REQUEST: {username}".encode())
+            else:
+                tcp_sock.sendall(f"{username}: {msg}".encode())
             active_time = time.time()
         except KeyboardInterrupt:
             break
